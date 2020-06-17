@@ -37,9 +37,8 @@ def preprocess_text(X, parallel = True):
 
 def build_model():
     pipeline = Pipeline([
-        ('vect', CountVectorizer()),
-        ('tfidf', TfidfTransformer()),
-        ('clf', MultiOutputClassifier(RandomForestClassifier(), n_jobs = -1))
+        ('vect', TfidfVectorizer()),
+        ('clf', MultiOutputClassifier(RandomForestClassifier()))
     ])
     return pipeline
 
@@ -73,10 +72,16 @@ def main():
         X_train, X_test, Y_train, Y_test = train_test_split(X, Y, test_size=0.2)
         
         print('Building model...')
-        model = build_model()
+        pipeline = build_model()
         
         print('Training model...')
-        model.fit(X_train, Y_train)
+        parameters = {'vect__ngram_range': [(1,1), (1,2)],
+                      'clf__estimator__n_estimators': [50, 100]
+                     }
+
+        gs_clf = GridSearchCV(estimator=pipeline, param_grid=parameters, verbose=3)
+        gs_clf.fit(X_train, Y_train)
+        model = gs_clf.best_estimator_
         
         print('Evaluating model...')
         evaluate_model(model, X_test, Y_test, category_names)
