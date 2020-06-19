@@ -15,8 +15,8 @@ from sklearn.feature_extraction.text import CountVectorizer, TfidfTransformer
 from sklearn.linear_model import LogisticRegression, SGDClassifier
 from sklearn.model_selection import GridSearchCV
 
-sys.path.append(os.path.abspath("lib"))
-from functions import preprocess
+sys.path.append(os.path.abspath("app"))
+from functions import *
 
 def load_data(database_filepath):
     # load data from database
@@ -27,7 +27,15 @@ def load_data(database_filepath):
 
 
 def preprocess_text(X, parallel = True):
-    print(X.shape[0])
+    '''Calls the text cleaning function on each element of series X
+
+    Parameters:
+    X (pandas Series): series of strings which need to be cleaned for further processing
+    parallel (bool): should cleaning be run in parallel (default - runs on all available cores)
+
+    Returns:
+    pandas Series: series containing preprocessed text 
+    '''
     if parallel:
         with mp.Pool(mp.cpu_count()) as pool:
             preprocessed = pool.map(preprocess, X)
@@ -36,6 +44,7 @@ def preprocess_text(X, parallel = True):
     return X
 
 def build_model():
+    # first we vectorize the data using tf-df and then fit a RF classifier for each output
     pipeline = Pipeline([
         ('vect', TfidfVectorizer()),
         ('clf', MultiOutputClassifier(RandomForestClassifier()))
@@ -48,6 +57,8 @@ def evaluate_model(model, X_test, Y_test, category_names):
     Y_pred = model.predict(X_test)
     Y_pred_df = pd.DataFrame(Y_pred, columns = Y_test.columns.tolist())
     df_metrics = pd.DataFrame(columns = ['column', 'precision', 'recall', 'f1_score'])
+
+    # creates a dataframe evaluating prediction of each label with precision, recall and fscore
     for col in Y_test.columns.tolist():
         precision = precision_score(Y_test[col], Y_pred_df[col], average = 'weighted')
         recall = recall_score(Y_test[col], Y_pred_df[col], average = 'weighted')
@@ -79,8 +90,11 @@ def main():
                       'clf__estimator__n_estimators': [50, 100]
                      }
 
+        # we are trying tf-idf with unigrams and bigrams and RF with 50 and 100 trees 
         gs_clf = GridSearchCV(estimator=pipeline, param_grid=parameters, verbose=3)
         gs_clf.fit(X_train, Y_train)
+
+        # use the best performing classifier
         model = gs_clf.best_estimator_
         
         print('Evaluating model...')

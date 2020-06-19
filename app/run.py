@@ -15,49 +15,20 @@ import re
 import sys
 import os
 
-sys.path.append(os.path.abspath("lib"))
 from functions import *
 
 
 app = Flask(__name__)
 
-def preprocess(text):
-    def get_wordnet_pos(treebank_tag):
+dirname = os.path.dirname
 
-        if treebank_tag.startswith('J'):
-            return wordnet.ADJ
-        elif treebank_tag.startswith('V'):
-            return wordnet.VERB
-        elif treebank_tag.startswith('N'):
-            return wordnet.NOUN
-        elif treebank_tag.startswith('R'):
-            return wordnet.ADV
-        else:
-            return wordnet.NOUN
-
-    # tokenize text
-    tokens = word_tokenize(text.lower())
-    tokens = [w for w in tokens if re.fullmatch('[a-z]+', w)] 
-    tokens = [w for w in tokens if not w in stopwords.words('english')] 
-    
-    # initiate lemmatizer
-    lemmatizer = WordNetLemmatizer()
-
-    # iterate through each token
-    clean_tokens = []
-    for tok, tag in pos_tag(tokens):
-        # lemmatize, normalize case, and remove leading/trailing white space
-        clean_tok = lemmatizer.lemmatize(tok, get_wordnet_pos(tag))
-        clean_tokens.append(clean_tok)
-
-    return (' ').join(clean_tokens)
-
+abs_path = dirname(dirname(os.path.realpath(__file__)))
 # load data
-engine = create_engine('sqlite:///data/DisasterResponse.db')
+engine = create_engine('sqlite:///' + abs_path + '/data/DisasterResponse.db')
 df = pd.read_sql_table('cleaned', engine)
 
 # load model
-model = joblib.load("models/classifier.pkl")
+model = joblib.load(abs_path + '/models/classifier.pkl')
 
 
 # index webpage displays cool visuals and receives user input text for model
