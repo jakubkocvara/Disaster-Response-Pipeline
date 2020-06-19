@@ -1,13 +1,14 @@
 import json
 import plotly
 import pandas as pd
+import numpy as np
 
 from nltk.stem import WordNetLemmatizer
 from nltk.tokenize import word_tokenize
 
 from flask import Flask
 from flask import render_template, request, jsonify
-from plotly.graph_objs import Bar
+from plotly.graph_objs import Bar, Violin
 import joblib
 from sqlalchemy import create_engine
 
@@ -37,13 +38,59 @@ model = joblib.load(abs_path + '/models/classifier.pkl')
 def index():
     
     # extract data needed for visuals
-    # TODO: Below is an example - modify to extract data for your own visuals
     genre_counts = df.groupby('genre').count()['message']
     genre_names = list(genre_counts.index)
-    
+
+    class_names = df.columns[4:].tolist()
+    df_class = pd.DataFrame(columns = class_names)
+    class_counts = list(map(lambda x: df[x].sum(), class_names))
+    df_class = df_class.append(pd.DataFrame([class_counts], columns = class_names))
+    df_class = df_class.sort_values(0, ascending = False, axis = 1)
+
+    df_message = df['message'].apply(len)
+
     # create visuals
-    # TODO: Below is an example - modify to create your own visuals
     graphs = [
+        {
+            'data': [
+                Bar(
+                    x=df_class.columns.tolist(),
+                    y=df_class.iloc[0],
+                    marker = dict(color = 'green')
+                )
+            ],
+
+            'layout': {
+                'title': 'Counts of individual classes in the data',
+                'yaxis': {
+                    'title': "Count"
+                },
+                'xaxis': {
+                    'title': "Class"
+                }
+            }
+        },
+        {
+            'data': [
+                Violin(
+                    x = df_message[df_message <= df_message.quantile(.98)],
+                    orientation = 'h',
+                    box_visible=True,                    
+                    marker = dict(color = 'orange')
+                )
+            ],
+
+            'layout': {
+                'title': 'Distribution of message lengths (removed outliers over 98 percentile)',
+                'yaxis': {
+                    'title': "Messages",
+                    'showticklabels': False
+                },
+                'xaxis': {
+                    'title': "Number of characters"
+                }
+            }
+        },
         {
             'data': [
                 Bar(
@@ -53,7 +100,7 @@ def index():
             ],
 
             'layout': {
-                'title': 'Distribution of Message Genres',
+                'title': 'Distribution of message genres',
                 'yaxis': {
                     'title': "Count"
                 },
